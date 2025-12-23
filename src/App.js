@@ -173,33 +173,47 @@ export default function FamilyRegistration() {
 
   const uploadPhoto = async (file) => {
     if (!file) return;
-
+  
     if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
-      setError('Only JPG, JPEG, and PNG images are allowed');
+      setError('Only JPG, JPEG, PNG images are allowed');
       return;
     }
-
+  
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size must be less than 5MB');
       return;
     }
-
+  
     setPhotoUploading(true);
     setError('');
-
+  
     try {
-      const fakeUrl = URL.createObjectURL(file);
-
-      setTimeout(() => {
-        setFormData(prev => ({
-          ...prev,
-          photo_url: fakeUrl
-        }));
-        setPhotoUploading(false);
-      }, 800);
-
+      const formDataObj = new FormData();
+      formDataObj.append('file', file);
+  
+      const response = await fetch(
+        `${BASE_URL}/api/v1/upload/photo`,
+        {
+          method: 'POST',
+          body: formDataObj
+        }
+      );
+  
+      const data = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(data.detail || 'Photo upload failed');
+      }
+  
+      // ✅ REAL GOOGLE DRIVE URL
+      setFormData(prev => ({
+        ...prev,
+        photo_url: data.photo_url
+      }));
+  
     } catch (err) {
-      setError('Failed to load photo');
+      setError(err.message || 'Failed to upload photo');
+    } finally {
       setPhotoUploading(false);
     }
   };
