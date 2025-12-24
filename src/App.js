@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Upload, Download, Loader2, Mail, Phone, User, Calendar, MapPin, Home, Users, Heart, FileText, ChevronRight, ChevronLeft, Shield, Camera } from 'lucide-react';
 import logo from './assets/logo.jpg';
 
+const BASE_URL = 'https://family-community-registration-production.up.railway.app';
 
-
-
-const BASE_URL =  'https://family-community-registration-production.up.railway.app'
+console.log("API Base URL:", BASE_URL);
 
 const STATES = ['Andhra Pradesh', 'Telangana', 'Karnataka', 'Tamil Nadu', 'Kerala', 'Maharashtra', 'Gujarat', 'Rajasthan', 'Uttar Pradesh', 'Madhya Pradesh', 'Bihar', 'West Bengal', 'Punjab', 'Haryana', 'Jharkhand', 'Odisha', 'Chhattisgarh', 'Uttarakhand', 'Himachal Pradesh', 'Assam', 'Goa', 'Other'];
 const COUNTRIES = ['India', 'USA', 'UK', 'Canada', 'Australia', 'Singapore', 'UAE', 'Other'];
+const MARITAL_STATUSES = ['Married', 'Unmarried', 'Prefer not to say'];
 
 export default function FamilyRegistration() {
   const [step, setStep] = useState(1);
@@ -46,13 +46,27 @@ export default function FamilyRegistration() {
     kula_devata: '',
     education: '',
     occupation: '',
-    house_number: '',
-    village_city: '',
-    mandal: '',
-    district: '',
-    state: 'Andhra Pradesh',
-    country: 'India',
-    pin_code: '',
+    marital_status: '',
+    
+    // Current Address
+    current_house_number: '',
+    current_village_city: '',
+    current_mandal: '',
+    current_district: '',
+    current_state: 'Andhra Pradesh',
+    current_country: 'India',
+    current_pin_code: '',
+    
+    // Native Address
+    native_house_number: '',
+    native_village_city: '',
+    native_mandal: '',
+    native_district: '',
+    native_state: 'Andhra Pradesh',
+    native_country: 'India',
+    native_pin_code: '',
+    
+    // Photo and Reference
     photo_url: '',
     referred_by_name: '',
     referred_mobile: '',
@@ -62,6 +76,7 @@ export default function FamilyRegistration() {
   const [surnameOther, setSurnameOther] = useState(false);
   const [gothramOther, setGothramOther] = useState(false);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [sameAsCurrentAddress, setSameAsCurrentAddress] = useState(false);
   
   // Step 4: Success
   const [pdfUrl, setPdfUrl] = useState('');
@@ -96,6 +111,24 @@ export default function FamilyRegistration() {
     return () => clearInterval(interval);
   }, [step]);
 
+  // Effect to copy current address to native address when checkbox is checked
+  useEffect(() => {
+    if (sameAsCurrentAddress) {
+      setFormData(prev => ({
+        ...prev,
+        native_house_number: prev.current_house_number,
+        native_village_city: prev.current_village_city,
+        native_mandal: prev.current_mandal,
+        native_district: prev.current_district,
+        native_state: prev.current_state,
+        native_country: prev.current_country,
+        native_pin_code: prev.current_pin_code
+      }));
+    }
+  }, [sameAsCurrentAddress, formData.current_house_number, formData.current_village_city, 
+      formData.current_mandal, formData.current_district, formData.current_state, 
+      formData.current_country, formData.current_pin_code]);
+
   const sendOtp = async () => {
     setError('');
     if (!otpValue.trim()) {
@@ -129,7 +162,7 @@ export default function FamilyRegistration() {
         setError(data.detail || data.message || data.error || 'Failed to send OTP');
       }
     } catch (err) {
-      setError('Network error. Please check your connection and try again.');
+      setError('Network error. Please check your connection and try again');
     } finally {
       setLoading(false);
     }
@@ -166,6 +199,7 @@ export default function FamilyRegistration() {
       }
     } catch (err) {
       setError('Network error. Please check your connection and try again.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -219,10 +253,13 @@ export default function FamilyRegistration() {
   };
 
   const validateForm = () => {
+    // Required fields according to new payload
     const required = [
       'full_name', 'surname', 'father_or_husband_name', 'mother_name',
       'date_of_birth', 'gender', 'blood_group', 'gothram', 'education',
-      'occupation', 'district', 'state', 'country', 'pin_code', 'photo_url'
+      'occupation', 'marital_status', 'current_district', 'current_state', 
+      'current_country', 'current_pin_code', 'photo_url',
+      'native_district', 'native_state', 'native_country', 'native_pin_code'
     ];
     
     for (let field of required) {
@@ -231,14 +268,27 @@ export default function FamilyRegistration() {
       }
     }
     
-    if (!formData.village_city && !formData.mandal) {
-      return 'Either Village/City or Mandal must be filled';
+    // Either village/city or mandal must be filled for current address
+    if (!formData.current_village_city && !formData.current_mandal) {
+      return 'Either Current Village/City or Mandal must be filled';
     }
     
-    if (formData.pin_code && !/^\d{6}$/.test(formData.pin_code)) {
-      return 'PIN code must be exactly 6 digits';
+    // Either village/city or mandal must be filled for native address
+    if (!formData.native_village_city && !formData.native_mandal) {
+      return 'Either Native Village/City or Mandal must be filled';
     }
     
+    // PIN code validation for current address
+    if (formData.current_pin_code && !/^\d{6}$/.test(formData.current_pin_code)) {
+      return 'Current PIN code must be exactly 6 digits';
+    }
+    
+    // PIN code validation for native address
+    if (formData.native_pin_code && !/^\d{6}$/.test(formData.native_pin_code)) {
+      return 'Native PIN code must be exactly 6 digits';
+    }
+    
+    // Referred mobile validation
     if (formData.referred_mobile && !/^\d{10}$/.test(formData.referred_mobile)) {
       return 'Referred mobile must be 10 digits';
     }
@@ -685,36 +735,57 @@ export default function FamilyRegistration() {
                     </div>
                   ))}
 
-                  {/* Surname */}
-                  <div className="form-group">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Surname *</label>
-                    <select
-                      value={surnameOther ? 'Other' : formData.surname}
-                      onChange={(e) => {
-                        if (e.target.value === 'Other') {
-                          setSurnameOther(true);
-                          setFormData({...formData, surname: ''});
-                        } else {
-                          setSurnameOther(false);
-                          setFormData({...formData, surname: e.target.value});
-                        }
-                      }}
-                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
-                    >
-                      <option value="">Select Surname</option>
-                      <option value="KANAGALA">KANAGALA</option>
-                      <option value="Other">Other</option>
-                    </select>
-                    {surnameOther && (
-                      <input
-                        type="text"
-                        value={formData.surname}
-                        onChange={(e) => setFormData({...formData, surname: e.target.value})}
-                        placeholder="Enter surname"
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none mt-2"
-                      />
-                    )}
-                  </div>
+                {/* Surname - Mother's Maiden Name */}
+<div className="form-group">
+  <label className="block text-sm font-semibold text-gray-700 mb-2">
+    Mother's Maiden Name (Surname) *
+  </label>
+  
+  {/* Help text */}
+  <div className="mb-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+    <p className="text-sm text-blue-700 font-medium mb-1">ℹ️ What is Mother's Maiden Name?</p>
+    <p className="text-xs text-blue-600">
+      This refers to your mother's surname <strong>before marriage</strong> (her father's surname).
+      If you don't know it, select "Other" and enter your family surname.
+    </p>
+  </div>
+  
+  <select
+    value={surnameOther ? 'Other' : formData.surname}
+    onChange={(e) => {
+      if (e.target.value === 'Other') {
+        setSurnameOther(true);
+        setFormData({...formData, surname: ''});
+      } else {
+        setSurnameOther(false);
+        setFormData({...formData, surname: e.target.value});
+      }
+    }}
+    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
+  >
+    <option value="">Select Mother's Maiden Name</option>
+    <option value="KANAGALA">KANAGALA</option>
+    <option value="Other">Other (Enter your surname)</option>
+  </select>
+  
+  {surnameOther && (
+    <div className="mt-3">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        Enter Your Family Surname
+      </label>
+      <input
+        type="text"
+        value={formData.surname}
+        onChange={(e) => setFormData({...formData, surname: e.target.value})}
+        placeholder="Enter your family surname"
+        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
+      />
+      <p className="text-xs text-gray-500 mt-2">
+        If you don't know mother's maiden name, enter your family surname here.
+      </p>
+    </div>
+  )}
+</div>
 
                   {/* Date of Birth */}
                   <div className="form-group">
@@ -743,6 +814,21 @@ export default function FamilyRegistration() {
                       <option value="Female">Female</option>
                       <option value="Other">Other</option>
                       <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
+
+                  {/* Marital Status */}
+                  <div className="form-group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Marital Status *</label>
+                    <select
+                      value={formData.marital_status}
+                      onChange={(e) => setFormData({...formData, marital_status: e.target.value})}
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
+                    >
+                      <option value="">Select Marital Status</option>
+                      {MARITAL_STATUSES.map(status => (
+                        <option key={status} value={status}>{status}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -783,7 +869,8 @@ export default function FamilyRegistration() {
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
                     >
                       <option value="">Select Gothram</option>
-                      <option value="KANAGALA">Chandrulla</option>
+                      <option value="Chandrolla">Chandrolla</option>
+                      <option value="Chandrulla">Chandrulla</option>
                       <option value="Other">Other</option>
                     </select>
                     {gothramOther && (
@@ -818,7 +905,7 @@ export default function FamilyRegistration() {
                     />
                   </div>
 
-                  {/* Address Section */}
+                  {/* Current Address Section */}
                   <div className="md:col-span-2">
                     <div className="mb-6 p-5 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border border-blue-100">
                       <div className="flex items-center gap-3 mb-4">
@@ -826,17 +913,17 @@ export default function FamilyRegistration() {
                           <Home className="w-6 h-6 text-blue-600" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-gray-800">Address Details</h3>
-                          <p className="text-sm text-gray-600">Fill in your residential information</p>
+                          <h3 className="font-bold text-gray-800">Current Address Details</h3>
+                          <p className="text-sm text-gray-600">Fill in your current residential information</p>
                         </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {[
-                          { label: 'House Number', value: formData.house_number, onChange: (e) => setFormData({...formData, house_number: e.target.value}) },
-                          { label: 'Village/City *', value: formData.village_city, onChange: (e) => setFormData({...formData, village_city: e.target.value}) },
-                          { label: 'Mandal *', value: formData.mandal, onChange: (e) => setFormData({...formData, mandal: e.target.value}) },
-                          { label: 'District *', value: formData.district, onChange: (e) => setFormData({...formData, district: e.target.value}) },
+                          { label: 'House Number', value: formData.current_house_number, onChange: (e) => setFormData({...formData, current_house_number: e.target.value}) },
+                          { label: 'Village/City', value: formData.current_village_city, onChange: (e) => setFormData({...formData, current_village_city: e.target.value}) },
+                          { label: 'Mandal', value: formData.current_mandal, onChange: (e) => setFormData({...formData, current_mandal: e.target.value}) },
+                          { label: 'District *', value: formData.current_district, onChange: (e) => setFormData({...formData, current_district: e.target.value}) },
                         ].map((field, index) => (
                           <div key={index}>
                             <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
@@ -854,8 +941,8 @@ export default function FamilyRegistration() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
                           <select
-                            value={formData.state}
-                            onChange={(e) => setFormData({...formData, state: e.target.value})}
+                            value={formData.current_state}
+                            onChange={(e) => setFormData({...formData, current_state: e.target.value})}
                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
                           >
                             {STATES.map(state => (
@@ -867,8 +954,8 @@ export default function FamilyRegistration() {
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
                           <select
-                            value={formData.country}
-                            onChange={(e) => setFormData({...formData, country: e.target.value})}
+                            value={formData.current_country}
+                            onChange={(e) => setFormData({...formData, current_country: e.target.value})}
                             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
                           >
                             {COUNTRIES.map(country => (
@@ -881,10 +968,10 @@ export default function FamilyRegistration() {
                           <label className="block text-sm font-medium text-gray-700 mb-2">PIN Code *</label>
                           <input
                             type="text"
-                            value={formData.pin_code}
+                            value={formData.current_pin_code}
                             onChange={(e) => {
                               if (/^\d{0,6}$/.test(e.target.value)) {
-                                setFormData({...formData, pin_code: e.target.value});
+                                setFormData({...formData, current_pin_code: e.target.value});
                               }
                             }}
                             maxLength={6}
@@ -895,6 +982,104 @@ export default function FamilyRegistration() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Native Address Section */}
+                  <div className="md:col-span-2">
+                    <div className="mb-6 p-5 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
+                            <MapPin className="w-6 h-6 text-purple-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-gray-800">Native Address Details</h3>
+                            <p className="text-sm text-gray-600">Fill in your native place information</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            id="sameAsCurrent"
+                            checked={sameAsCurrentAddress}
+                            onChange={(e) => setSameAsCurrentAddress(e.target.checked)}
+                            className="h-5 w-5 text-green-600 rounded focus:ring-green-500"
+                          />
+                          <label htmlFor="sameAsCurrent" className="ml-2 text-sm text-gray-700">
+                            Same as Current Address
+                          </label>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[
+                          { label: 'House Number *', value: formData.native_house_number, onChange: (e) => setFormData({...formData, native_house_number: e.target.value}), disabled: sameAsCurrentAddress },
+                          { label: 'Village/City', value: formData.native_village_city, onChange: (e) => setFormData({...formData, native_village_city: e.target.value}), disabled: sameAsCurrentAddress },
+                          { label: 'Mandal', value: formData.native_mandal, onChange: (e) => setFormData({...formData, native_mandal: e.target.value}), disabled: sameAsCurrentAddress },
+                          { label: 'District *', value: formData.native_district, onChange: (e) => setFormData({...formData, native_district: e.target.value}), disabled: sameAsCurrentAddress },
+                        ].map((field, index) => (
+                          <div key={index}>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">{field.label}</label>
+                            <input
+                              type="text"
+                              value={field.value}
+                              onChange={field.onChange}
+                              disabled={field.disabled}
+                              className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none ${field.disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
+                          <select
+                            value={formData.native_state}
+                            onChange={(e) => setFormData({...formData, native_state: e.target.value})}
+                            disabled={sameAsCurrentAddress}
+                            className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none ${sameAsCurrentAddress ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                          >
+                            {STATES.map(state => (
+                              <option key={state} value={state}>{state}</option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Country *</label>
+                          <select
+                            value={formData.native_country}
+                            onChange={(e) => setFormData({...formData, native_country: e.target.value})}
+                            disabled={sameAsCurrentAddress}
+                            className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none ${sameAsCurrentAddress ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                          >
+                            {COUNTRIES.map(country => (
+                              <option key={country} value={country}>{country}</option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">PIN Code *</label>
+                          <input
+                            type="text"
+                            value={formData.native_pin_code}
+                            onChange={(e) => {
+                              if (/^\d{0,6}$/.test(e.target.value)) {
+                                setFormData({...formData, native_pin_code: e.target.value});
+                              }
+                            }}
+                            maxLength={6}
+                            placeholder="6-digit PIN"
+                            disabled={sameAsCurrentAddress}
+                            className={`w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none ${sameAsCurrentAddress ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  
 
                   {/* Photo Upload */}
                   <div className="md:col-span-2">
@@ -963,6 +1148,51 @@ export default function FamilyRegistration() {
                     </div>
                   </div>
                 </div>
+
+
+
+                {/* Reference Information */}
+                  <div className="md:col-span-2">
+                    <div className="mb-6 p-5 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border border-amber-100">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                          <Users className="w-6 h-6 text-amber-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-gray-800">Reference Information</h3>
+                          <p className="text-sm text-gray-600">Person who referred you to the community</p>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Referred By Name *</label>
+                          <input
+                            type="text"
+                            value={formData.referred_by_name}
+                            onChange={(e) => setFormData({...formData, referred_by_name: e.target.value})}
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
+                            placeholder="Enter reference person's name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Referred Mobile *</label>
+                          <input
+                            type="text"
+                            value={formData.referred_mobile}
+                            onChange={(e) => {
+                              if (/^\d{0,10}$/.test(e.target.value)) {
+                                setFormData({...formData, referred_mobile: e.target.value});
+                              }
+                            }}
+                            maxLength={10}
+                            placeholder="10-digit mobile number"
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200 focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                 {/* Submit Button */}
                 <div className="mt-10 pt-8 border-t border-gray-200">
@@ -1038,7 +1268,7 @@ export default function FamilyRegistration() {
                     <div className="mb-8">
                       <div className="flex items-center justify-center gap-3 mb-6">
                         <FileText className="w-8 h-8 text-green-600" />
-                        <h3 className="text-2xl font-bold text-gray-800">Registration Certificate</h3>
+                        <h3 className="text-2xl font-bold text-gray-800">Registration PDF</h3>
                       </div>
                       
                       <div className="mb-6 border-4 border-gray-200 rounded-xl overflow-hidden shadow-lg" style={{height: '70vh'}}>
@@ -1071,7 +1301,7 @@ export default function FamilyRegistration() {
                           className="border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-bold py-4 px-6 rounded-xl transition-all duration-300 flex items-center justify-center gap-3 hover:bg-gray-50"
                         >
                           <FileText className="w-6 h-6" />
-                          Print Certificate
+                          Print PDF
                         </button>
                       </div>
                     </div>
