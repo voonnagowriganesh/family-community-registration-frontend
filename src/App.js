@@ -316,8 +316,13 @@ export default function FamilyRegistration() {
       const data = await response.json();
       
       if (response.ok) {
-        setPdfUrl(data.pdf_url || '');
-        setReferenceId(data.reference_id || data.registration_id || '');
+        const relativePdfUrl = data.pdf_url || '';
+        const fullPdfUrl = relativePdfUrl
+          ? `${BASE_URL}${relativePdfUrl}`
+          : '';
+
+        setPdfUrl(fullPdfUrl);   // ✅ FULL URL HERE
+        setReferenceId(data.registration_id || '');
         setStep(4);
       } else {
         setError(data.error || data.message || 'Registration failed');
